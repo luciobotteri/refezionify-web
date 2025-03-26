@@ -100,7 +100,7 @@ function App() {
               >
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="font-bold text-lg">
-                    {dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-${day}`, 'YYYY-M-D').format('dddd D MMMM')}
+                    {dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-${day}`, 'YYYY-M-D').format('dddd D MMMM').replace(/^./, s => s.toUpperCase())}
                     {isToday && ' (Oggi!)'}
                   </h2>
                 </div>
@@ -117,8 +117,8 @@ function App() {
                 </ul>
                 {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`] && (
                   <div className="mt-3 text-sm">
-                    <p className="mb-1"><strong>Analisi nutrizionale:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].analisi}</p>
-                    <p><strong>Consiglio per il resto della giornata:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].consiglio}</p>
+                    <p className="mb-1"><strong>🔍 Analisi nutrizionale:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].analisi}</p>
+                    <p><strong>💬 Consiglio per il resto della giornata:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].consiglio}</p>
                   </div>
                 )}
               </div>
