@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import './index.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/it';
@@ -11,6 +11,7 @@ function App() {
   const [monthData, setMonthData] = useState({});
   const [loading, setLoading] = useState(true);
   const today = dayjs();
+  const todayRef = useRef(null);
 
   const monthCode = (month) => {
     const codes = {
@@ -34,8 +35,10 @@ function App() {
       if (!code) return;
 
       try {
+        const year = currentMonth > 8 ? 2024 : 2025;
+        const paddedMonth = currentMonth.toString().padStart(2, '0');
         const response = await fetch(
-          `/comune-proxy/flex/cm/pages/ServeBLOB.php/L/IT/IDPagina/${code}`
+          `https://refezionify-proxy.onrender.com/menu?month=${paddedMonth}&year=${year}`
         );
         const html = await response.text();
         const parser = new DOMParser();
@@ -63,6 +66,13 @@ function App() {
         }
 
         setMonthData(parsed);
+        setTimeout(() => {
+          if (todayRef.current) {
+            requestAnimationFrame(() => {
+              todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+          }
+        }, 100);
       } catch (error) {
         console.error("Errore durante il parsing:", error);
       } finally {
@@ -124,6 +134,8 @@ function App() {
             return (
               <div
                 key={day}
+                ref={isToday ? todayRef : null}
+                data-today={isToday ? true : undefined}
                 className={`rounded-2xl px-5 py-4 shadow-md mb-4 transition-all ${
                   isToday ? 'bg-purple-500 text-white' : 'bg-white'
                 }`}
