@@ -13,59 +13,13 @@ function App() {
   const today = dayjs();
   const todayRef = useRef(null);
 
-  const monthCode = (month) => {
-    const codes = {
-      1: '3259',
-      2: '3260',
-      3: '3261',
-      4: '3262',
-      5: '3263',
-      6: '14357',
-      9: '3247',
-      10: '3250',
-      11: '3251',
-      12: '3258',
-    };
-    return codes[month] || '';
-  };
-
   useEffect(() => {
-    const fetchMenu = async () => {
-      const code = monthCode(currentMonth);
-      if (!code) return;
-
+    const fetchJSON = async () => {
       try {
-        const year = currentMonth > 8 ? 2024 : 2025;
-        const paddedMonth = currentMonth.toString().padStart(2, '0');
-        const response = await fetch(
-          `https://refezionify-proxy.onrender.com/menu?month=${paddedMonth}&year=${year}`
-        );
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const rows = Array.from(doc.querySelectorAll('table.viewTable tr'));
-
-        const parsed = {};
-
-        for (let row of rows) {
-          const dateCell = row.querySelector('div.viewTableHCCellText');
-          const menuCell = row.querySelector('div.viewTableCellText');
-
-          if (dateCell && menuCell) {
-            const dateText = dateCell.textContent.trim().toLowerCase();
-            const menu = menuCell.textContent.trim();
-
-            const dateMatch = dateText.match(/(\d{1,2})\s+[a-z]+/i);
-            if (!dateMatch) continue;
-
-            const day = parseInt(dateMatch[1]);
-            if (!isNaN(day)) {
-              parsed[day] = menu;
-            }
-          }
-        }
-
-        setMonthData(parsed);
+        const response = await fetch('/menu-data.json');
+        const data = await response.json();
+        const key = `${currentMonth > 8 ? 2024 : 2025}-${currentMonth.toString().padStart(2, '0')}`;
+        setMonthData(data[key] || {});
         setTimeout(() => {
           if (todayRef.current) {
             requestAnimationFrame(() => {
@@ -74,14 +28,14 @@ function App() {
           }
         }, 100);
       } catch (error) {
-        console.error("Errore durante il parsing:", error);
+        console.error('Errore durante il caricamento del JSON:', error);
       } finally {
         setLoading(false);
       }
     };
 
     setLoading(true);
-    fetchMenu();
+    fetchJSON();
   }, [currentMonth]);
 
   return (
