@@ -9,6 +9,7 @@ function App() {
   const initialMonth = dayjs().month() + 1;
   const [currentMonth, setCurrentMonth] = useState(initialMonth);
   const [monthData, setMonthData] = useState({});
+  const [nutritionData, setNutritionData] = useState({});
   const [loading, setLoading] = useState(true);
   const today = dayjs();
   const todayRef = useRef(null);
@@ -20,6 +21,9 @@ function App() {
         const data = await response.json();
         const key = `${currentMonth > 8 ? 2024 : 2025}-${currentMonth.toString().padStart(2, '0')}`;
         setMonthData(data[key] || {});
+        const response2 = await fetch('/more-data.json');
+        const moreData = await response2.json();
+        setNutritionData(moreData);
         setTimeout(() => {
           if (todayRef.current) {
             requestAnimationFrame(() => {
@@ -111,6 +115,12 @@ function App() {
                       </li>
                     ))}
                 </ul>
+                {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`] && (
+                  <div className="mt-3 text-sm">
+                    <p className="mb-1"><strong>Analisi nutrizionale:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].analisi}</p>
+                    <p><strong>Consiglio per il resto della giornata:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].consiglio}</p>
+                  </div>
+                )}
               </div>
             );
           })
