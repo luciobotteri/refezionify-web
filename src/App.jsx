@@ -13,37 +13,48 @@ function App() {
   const [loading, setLoading] = useState(true);
   const today = dayjs();
   const todayRef = useRef(null);
+  const [weather, setWeather] = useState(null);
 
   useEffect(() => {
     const fetchJSON = async () => {
       try {
-        const response = await fetch('/menu-data.json');
+        const response = await fetch(`${import.meta.env.BASE_URL}menu-data.json`)
         const data = await response.json();
         const key = `${currentMonth > 8 ? 2024 : 2025}-${currentMonth.toString().padStart(2, '0')}`;
         setMonthData(data[key] || {});
-        const response2 = await fetch('/more-data.json');
+        const response2 = await fetch(`${import.meta.env.BASE_URL}more-data.json`);
         const moreData = await response2.json();
         setNutritionData(moreData);
-        setTimeout(() => {
-          if (todayRef.current) {
-            requestAnimationFrame(() => {
-              todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-          }
-        }, 100);
       } catch (error) {
         console.error('Errore durante il caricamento del JSON:', error);
-      } finally {
-        setLoading(false);
       }
+
+      try {
+        const weatherResp = await fetch("https://wttr.in/Napoli?format=%c+%t");
+        const weatherText = await weatherResp.text();
+        setWeather(weatherText);
+      } catch (err) {
+        console.error("Errore nel recupero meteo:", err);
+      }
+
+      setLoading(false);
     };
 
     setLoading(true);
     fetchJSON();
   }, [currentMonth]);
 
+  useEffect(() => {
+    if (!loading && todayRef.current) {
+      requestAnimationFrame(() => {
+        const top = todayRef.current.getBoundingClientRect().top + window.pageYOffset - 60;
+        window.scrollTo({ top, behavior: 'smooth' });
+      });
+    }
+  }, [loading]);
+
   return (
-    <div className="min-h-screen bg-sky-50 p-4 text-gray-800 font-sans">
+    <div className="min-h-screen bg-sky-50 p-4 text-gray-800 font-sans text-2xl md:text-2xl">
       <div className="max-w-md mx-auto">
         <div className="flex justify-between items-center mb-6">
           <button
@@ -86,6 +97,12 @@ function App() {
 
         {loading ? (
           <p className="text-center">Caricamento...</p>
+        ) : Object.keys(monthData).length === 0 ? (
+          <p className="text-center text-sm text-gray-600">
+            {dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-01`).isAfter(today, 'month')
+              ? '👨🏻‍🍳 Il menù per questo mese non è ancora disponibile!'
+              : '👨🏻‍🍳 Nessun menù disponibile per questo mese.'}
+          </p>
         ) : (
           Object.entries(monthData).map(([day, menu]) => {
             const isToday = dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-${day}`, 'YYYY-M-D').isSame(today, 'day');
@@ -95,7 +112,7 @@ function App() {
                 ref={isToday ? todayRef : null}
                 data-today={isToday ? true : undefined}
                 className={`rounded-2xl px-5 py-4 shadow-md mb-4 transition-all ${
-                  isToday ? 'bg-purple-500 text-white' : 'bg-white'
+                  isToday ? 'bg-purple-600 text-white' : 'bg-white'
                 }`}
               >
                 <div className="flex justify-between items-center mb-2">
@@ -103,8 +120,13 @@ function App() {
                     {dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-${day}`, 'YYYY-M-D').format('dddd D MMMM').replace(/^./, s => s.toUpperCase())}
                     {isToday && ' (Oggi!)'}
                   </h2>
+                  {isToday && weather && (
+                    <p className="text-sm text-white italic">
+                      {weather.slice(1)}<span className="text-3xl ml-2">{weather.charAt(0)}</span>
+                    </p>
+                  )}
                 </div>
-                <ul className="list-disc list-inside text-sm space-y-1">
+                <ul className="list-disc list-inside text-base space-y-1 mb-6">
                   {menu
                     .split(/[,;\n]/)
                     .map((x) => x.trim())
@@ -116,9 +138,9 @@ function App() {
                     ))}
                 </ul>
                 {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`] && (
-                  <div className="mt-3 text-sm">
-                    <p className="mb-1"><strong>🔍 Analisi nutrizionale:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].analisi}</p>
-                    <p><strong>💬 Consiglio per il resto della giornata:</strong> {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].consiglio}</p>
+                  <div className="mt-3 text-base leading-relaxed space-y-5">
+                    <p className="mb-1"><strong>🔍 Analisi nutrizionale:</strong><br />{nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].analisi}</p>
+                    <p><strong>💬 Consiglio per il resto della giornata:</strong><br />{nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].consiglio}</p>
                   </div>
                 )}
               </div>
