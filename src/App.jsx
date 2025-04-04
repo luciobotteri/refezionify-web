@@ -6,12 +6,13 @@ dayjs.locale('it');
 
 function App() {
   const validMonths = [9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
-  const initialMonth = dayjs().month() + 1;
+  const today = dayjs();
+  const initialMonth = today.month() + 1;
   const [currentMonth, setCurrentMonth] = useState(initialMonth);
+  const currentYear = currentMonth > 8 ? 2024 : 2025;
   const [monthData, setMonthData] = useState({});
   const [nutritionData, setNutritionData] = useState({});
   const [loading, setLoading] = useState(true);
-  const today = dayjs();
   const todayRef = useRef(null);
   const [weather, setWeather] = useState(null);
 
@@ -20,21 +21,13 @@ function App() {
       try {
         const response = await fetch(`${import.meta.env.BASE_URL}menu-data.json`)
         const data = await response.json();
-        const key = `${currentMonth > 8 ? 2024 : 2025}-${currentMonth.toString().padStart(2, '0')}`;
+        const key = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
         setMonthData(data[key] || {});
         const response2 = await fetch(`${import.meta.env.BASE_URL}more-data.json`);
         const moreData = await response2.json();
         setNutritionData(moreData);
       } catch (error) {
         console.error('Errore durante il caricamento del JSON:', error);
-      }
-
-      try {
-        const weatherResp = await fetch("https://wttr.in/Napoli?format=%c+%t");
-        const weatherText = await weatherResp.text();
-        setWeather(weatherText);
-      } catch (err) {
-        console.error("Errore nel recupero meteo:", err);
       }
 
       setLoading(false);
@@ -45,12 +38,56 @@ function App() {
   }, [currentMonth]);
 
   useEffect(() => {
-    if (!loading && todayRef.current) {
-      requestAnimationFrame(() => {
+    const getWeather = async () => {
+      try {
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.8519&longitude=14.2389&current_weather=true');
+        const data = await res.json();
+        const weatherInfo = data.current_weather;
+        if (weatherInfo && typeof weatherInfo.temperature === 'number') {
+          const emoji = weatherInfo.weathercode < 3
+            ? '☀️'
+            : weatherInfo.weathercode < 6
+            ? '🌥️'
+            : weatherInfo.weathercode < 9
+            ? '🌧️'
+            : '🌩️';
+          setWeather(`${weatherInfo.temperature}°C ${emoji}`);
+        }
+      } catch (err) {
+        console.error("Errore meteo Open-Meteo:", err);
+      }
+    };
+    getWeather();
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+
+    const scrollToRef = () => {
+      if (today.month() + 1 !== currentMonth) return;
+      if (todayRef.current) {
         const top = todayRef.current.getBoundingClientRect().top + window.pageYOffset - 60;
         window.scrollTo({ top, behavior: 'smooth' });
-      });
-    }
+        return;
+      }
+
+      // Trova il primo giorno disponibile dopo oggi
+      const todayDay = today.date();
+      const sortedDays = Object.keys(monthData)
+        .map((d) => parseInt(d))
+        .sort((a, b) => a - b);
+
+      const nextDay = sortedDays.find((d) => d > todayDay);
+      if (nextDay) {
+        const el = document.querySelector(`[data-day="${nextDay}"]`);
+        if (el) {
+          const top = el.getBoundingClientRect().top + window.pageYOffset - 60;
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
+      }
+    };
+
+    requestAnimationFrame(scrollToRef);
   }, [loading]);
 
   return (
@@ -71,7 +108,7 @@ function App() {
             ‹
           </button>
           <h1 className="text-2xl font-bold text-center text-blue-900 flex-1">
-            Menù di {dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-01`).format('MMMM YYYY')}
+            Menù di {dayjs(`${currentYear}-${currentMonth}-01`).format('MMMM YYYY')}
           </h1>
           <button
             onClick={() => {
@@ -99,30 +136,32 @@ function App() {
           <p className="text-center">Caricamento...</p>
         ) : Object.keys(monthData).length === 0 ? (
           <p className="text-center text-sm text-gray-600">
-            {dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-01`).isAfter(today, 'month')
+            {dayjs(`${currentYear}-${currentMonth}-01`).isAfter(today, 'month')
               ? '👨🏻‍🍳 Il menù per questo mese non è ancora disponibile!'
               : '👨🏻‍🍳 Nessun menù disponibile per questo mese.'}
           </p>
         ) : (
           Object.entries(monthData).map(([day, menu]) => {
-            const isToday = dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-${day}`, 'YYYY-M-D').isSame(today, 'day');
+            const isToday = dayjs(`${currentYear}-${currentMonth}-${day}`, 'YYYY-M-D').isSame(today, 'day');
+            const dayKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`;
             return (
               <div
                 key={day}
                 ref={isToday ? todayRef : null}
                 data-today={isToday ? true : undefined}
+                data-day={day}
                 className={`rounded-2xl px-5 py-4 shadow-md mb-4 transition-all ${
                   isToday ? 'bg-purple-600 text-white' : 'bg-white'
                 }`}
               >
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="font-bold text-lg">
-                    {dayjs(`${currentMonth > 8 ? 2024 : 2025}-${currentMonth}-${day}`, 'YYYY-M-D').format('dddd D MMMM').replace(/^./, s => s.toUpperCase())}
+                    {dayjs(`${currentYear}-${currentMonth}-${day}`, 'YYYY-M-D').format('dddd D MMMM').replace(/^./, s => s.toUpperCase())}
                     {isToday && ' (Oggi!)'}
                   </h2>
                   {isToday && weather && (
-                    <p className="text-sm text-white italic">
-                      {weather.slice(1)}<span className="text-3xl ml-2">{weather.charAt(0)}</span>
+                    <p className="text-sm text-white italic flex items-center gap-2">
+                      <span className="text-3xl">{weather.split(' ')[1]}</span> {weather.split(' ')[0]}
                     </p>
                   )}
                 </div>
@@ -137,10 +176,10 @@ function App() {
                       </li>
                     ))}
                 </ul>
-                {nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`] && (
+                {nutritionData[dayKey] && (
                   <div className="mt-3 text-base leading-relaxed space-y-5">
-                    <p className="mb-1"><strong>🔍 Analisi nutrizionale:</strong><br />{nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].analisi}</p>
-                    <p><strong>💬 Consiglio per il resto della giornata:</strong><br />{nutritionData[`2025-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`].consiglio}</p>
+                    <p className="mb-1"><strong>🔍 Analisi nutrizionale:</strong><br />{nutritionData[dayKey].analisi}</p>
+                    <p><strong>💬 Consiglio per il resto della giornata:</strong><br />{nutritionData[dayKey].consiglio}</p>
                   </div>
                 )}
               </div>
