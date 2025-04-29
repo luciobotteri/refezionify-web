@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import './index.css';
 import dayjs from 'dayjs';
 import 'dayjs/locale/it';
+import DayCard from './DayCard';
 dayjs.locale('it');
 
 function App() {
   const validMonths = [9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
-  const today = dayjs();
+  const today = dayjs('2025-04-07');
   const initialMonth = today.month() + 1;
   const [currentMonth, setCurrentMonth] = useState(initialMonth);
   const currentYear = currentMonth > 8 ? 2024 : 2025;
@@ -14,7 +15,6 @@ function App() {
   const [nutritionData, setNutritionData] = useState({});
   const [loading, setLoading] = useState(true);
   const todayRef = useRef(null);
-  const [weather, setWeather] = useState(null);
 
   useEffect(() => {
     const fetchJSON = async () => {
@@ -29,36 +29,12 @@ function App() {
       } catch (error) {
         console.error('Errore durante il caricamento del JSON:', error);
       }
-
       setLoading(false);
     };
 
     setLoading(true);
     fetchJSON();
   }, [currentMonth]);
-
-  useEffect(() => {
-    const getWeather = async () => {
-      try {
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.8519&longitude=14.2389&current_weather=true');
-        const data = await res.json();
-        const weatherInfo = data.current_weather;
-        if (weatherInfo && typeof weatherInfo.temperature === 'number') {
-          const emoji = weatherInfo.weathercode < 3
-            ? '☀️'
-            : weatherInfo.weathercode < 6
-            ? '🌥️'
-            : weatherInfo.weathercode < 9
-            ? '🌧️'
-            : '🌩️';
-          setWeather(`${weatherInfo.temperature}°C ${emoji}`);
-        }
-      } catch (err) {
-        console.error("Errore meteo Open-Meteo:", err);
-      }
-    };
-    getWeather();
-  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -133,7 +109,7 @@ function App() {
         </div>
 
         {loading ? (
-          <p className="text-center">Caricamento...</p>
+          <p className="text-center">Sto caricando il menù...</p>
         ) : Object.keys(monthData).length === 0 ? (
           <p className="text-center text-sm text-gray-600">
             {dayjs(`${currentYear}-${currentMonth}-01`).isAfter(today, 'month')
@@ -145,44 +121,14 @@ function App() {
             const isToday = dayjs(`${currentYear}-${currentMonth}-${day}`, 'YYYY-M-D').isSame(today, 'day');
             const dayKey = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.padStart(2, '0')}`;
             return (
-              <div
-                key={day}
-                ref={isToday ? todayRef : null}
-                data-today={isToday ? true : undefined}
-                data-day={day}
-                className={`rounded-2xl px-5 py-4 shadow-md mb-4 transition-all ${
-                  isToday ? 'bg-purple-600 text-white' : 'bg-white'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <h2 className="font-bold text-lg">
-                    {dayjs(`${currentYear}-${currentMonth}-${day}`, 'YYYY-M-D').format('dddd D MMMM').replace(/^./, s => s.toUpperCase())}
-                    {isToday && ' (Oggi!)'}
-                  </h2>
-                  {isToday && weather && (
-                    <p className="text-sm text-white italic flex items-center gap-2">
-                      <span className="text-3xl">{weather.split(' ')[1]}</span> {weather.split(' ')[0]}
-                    </p>
-                  )}
-                </div>
-                <ul className="list-disc list-inside text-base space-y-1 mb-6">
-                  {menu
-                    .split(/[,;\n]/)
-                    .map((x) => x.trim())
-                    .filter(Boolean)
-                    .map((item, i) => (
-                      <li key={i}>
-                        {item.charAt(0).toUpperCase() + item.slice(1)}
-                      </li>
-                    ))}
-                </ul>
-                {nutritionData[dayKey] && (
-                  <div className="mt-3 text-base leading-relaxed space-y-5">
-                    <p className="mb-1"><strong>🔍 Analisi nutrizionale:</strong><br />{nutritionData[dayKey].analisi}</p>
-                    <p><strong>💬 Consiglio per il resto della giornata:</strong><br />{nutritionData[dayKey].consiglio}</p>
-                  </div>
-                )}
-              </div>
+              <DayCard
+                day={day}
+                menu={menu}
+                isToday={isToday}
+                dayKey={dayKey}
+                moreData={nutritionData}
+                todayRef={isToday ? todayRef : null}
+              />
             );
           })
         )}
